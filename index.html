@@ -350,16 +350,17 @@
       border-radius: var(--radius); overflow: hidden; display: none;
     }
     .cal-header {
-      display: flex; align-items: center; gap: 8px;
+      display: flex; align-items: center; gap: 6px;
       padding: 12px 14px; border-bottom: 1px solid var(--border);
+      min-width: 0;
     }
     .cal-nav-btn {
       background: var(--pill); border: none; border-radius: 8px;
-      padding: 6px 12px; font-size: 1.1rem; color: var(--text); cursor: pointer;
-      transition: background .15s; line-height: 1;
+      padding: 6px 10px; font-size: 1.1rem; color: var(--text); cursor: pointer;
+      transition: background .15s; line-height: 1; flex-shrink: 0;
     }
     .cal-nav-btn:hover { background: var(--border); }
-    .cal-title { flex: 1; text-align: center; font-size: .93rem; font-weight: 700; text-transform: capitalize; }
+    .cal-title { flex: 1; text-align: center; font-size: .88rem; font-weight: 700; text-transform: capitalize; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .cal-view-toggle { display: flex; border: 1.5px solid var(--border); border-radius: 8px; overflow: hidden; }
     .cal-view-btn { background: none; border: none; padding: 5px 10px; font-size: .75rem; color: var(--muted); cursor: pointer; transition: all .15s; }
     .cal-view-btn.active { background: var(--accent); color: white; }
@@ -477,7 +478,7 @@
 
 <!-- TABS -->
 <div class="tabs">
-  <button class="tab active" data-tab="all">✨ Todas</button>
+  <button class="tab active" data-tab="today">🌅 Hoy</button>
   <button class="tab" data-tab="calendar">📅 Calendario</button>
   <button class="tab" data-tab="archived">📦 Archivadas</button>
 </div>
@@ -527,9 +528,9 @@
 
 <!-- EMPTY STATE -->
 <div class="empty" id="emptyState">
-  <div class="big">📝</div>
-  <h3>Sin notas todavía</h3>
-  <p>Toca en el campo de arriba o el botón + para crear tu primera nota</p>
+  <div class="big" id="emptyEmoji">📝</div>
+  <h3 id="emptyTitle">Sin notas todavía</h3>
+  <p id="emptyMsg">Toca en el campo de arriba o el botón + para crear tu primera nota</p>
 </div>
 
 <div class="bottom-space"></div>
@@ -582,7 +583,7 @@ const MONTH_NAMES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','A
 // STATE
 // ═══════════════════════════════════════════════════════════
 let notes = [];
-let tab    = 'all';
+let tab    = 'today';
 let cat    = 'all';
 let sort   = 'updatedAt';
 let editId = null;
@@ -652,9 +653,14 @@ function filtered() {
   if (tab === 'calendar' && calSelectedDay) {
     out = notesOnDay(calSelectedDay);
   } else {
+    const todayStr = new Date().toDateString();
     out = notes.filter(n => {
       if (tab === 'archived') return n.archived;
       if (n.archived) return false;
+      if (tab === 'today') {
+        return new Date(n.createdAt).toDateString() === todayStr
+            || new Date(n.updatedAt).toDateString() === todayStr;
+      }
       return true;
     });
   }
@@ -894,6 +900,10 @@ function renderAll() {
   if (all.length === 0) {
     emptyState.style.display = 'block';
     pinnedSection.style.display = 'none';
+    const isToday = tab === 'today';
+    document.getElementById('emptyEmoji').textContent  = isToday ? '🌅' : '📝';
+    document.getElementById('emptyTitle').textContent  = isToday ? 'Sin notas hoy' : 'Sin notas todavía';
+    document.getElementById('emptyMsg').textContent    = isToday ? 'Crea tu primera nota del día 👆' : 'Toca arriba o el botón + para empezar';
     return;
   }
   emptyState.style.display = 'none';
