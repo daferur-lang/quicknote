@@ -1,0 +1,5 @@
+﻿*creds*
+*.key
+*.env
+.DS_Store
+Thumbs.db
