@@ -1,0 +1,1226 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#6c63ff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="description" content="QuickNote — Notas ultrarrápidas y visuales">
+  <title>QuickNote ⚡</title>
+  <link rel="manifest" href="manifest.json">
+  <style>
+    /* ── TOKENS ─────────────────────────────────────────── */
+    :root {
+      --bg:         #f0f2f5;
+      --surface:    #ffffff;
+      --text:       #1a1a2e;
+      --muted:      #6b7280;
+      --border:     rgba(0,0,0,.08);
+      --shadow:     0 2px 8px rgba(0,0,0,.08);
+      --shadow-lg:  0 8px 28px rgba(0,0,0,.15);
+      --radius:     16px;
+      --header:     #ffffffee;
+      --pill:       #f0f2f5;
+      --accent:     #6c63ff;
+      --accent-glow:rgba(108,99,255,.35);
+      --toast-bg:   #1a1a2e;
+
+      /* note palette — light */
+      --cn-default: #ffffff;
+      --cn-yellow:  #fff740;
+      --cn-pink:    #ffb3d9;
+      --cn-red:     #ffadad;
+      --cn-green:   #b5ead7;
+      --cn-blue:    #aecbfa;
+      --cn-purple:  #d0bfff;
+      --cn-orange:  #ffd6a5;
+    }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg:        #0f1117;
+        --surface:   #1c1f27;
+        --text:      #f1f3f9;
+        --muted:     #8b92a5;
+        --border:    rgba(255,255,255,.07);
+        --shadow:    0 2px 8px rgba(0,0,0,.4);
+        --shadow-lg: 0 8px 28px rgba(0,0,0,.6);
+        --header:    #1c1f27ee;
+        --pill:      #252932;
+        --accent:    #7c6fff;
+        --toast-bg:  #252932;
+
+        /* note palette — dark (desaturated, readable) */
+        --cn-default: #252932;
+        --cn-yellow:  #4a4100;
+        --cn-pink:    #5c1f40;
+        --cn-red:     #5c1c1c;
+        --cn-green:   #0e4a30;
+        --cn-blue:    #0e3060;
+        --cn-purple:  #2e2470;
+        --cn-orange:  #5c3600;
+      }
+    }
+
+    /* ── RESET ───────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overscroll-behavior: none;
+    }
+    button { font-family: inherit; cursor: pointer; }
+    input, textarea { font-family: inherit; }
+    input[type="search"]::-webkit-search-cancel-button { display: none; }
+
+    /* ── NOTE COLOR CLASSES ──────────────────────────────── */
+    .nc-default { background: var(--cn-default); }
+    .nc-yellow  { background: var(--cn-yellow); }
+    .nc-pink    { background: var(--cn-pink); }
+    .nc-red     { background: var(--cn-red); }
+    .nc-green   { background: var(--cn-green); }
+    .nc-blue    { background: var(--cn-blue); }
+    .nc-purple  { background: var(--cn-purple); }
+    .nc-orange  { background: var(--cn-orange); }
+
+    /* ── HEADER ──────────────────────────────────────────── */
+    .header {
+      position: sticky; top: 0; z-index: 100;
+      background: var(--header);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 16px;
+      display: flex; align-items: center; gap: 10px;
+    }
+    .logo {
+      font-size: 1.4rem; font-weight: 800; white-space: nowrap;
+      background: linear-gradient(135deg, var(--accent), #ff6b9d);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .search-wrap { flex: 1; position: relative; }
+    .search-ico {
+      position: absolute; left: 11px; top: 50%; transform: translateY(-50%);
+      font-size: .9rem; color: var(--muted); pointer-events: none;
+    }
+    .search-input {
+      width: 100%; padding: 9px 14px 9px 34px;
+      border: 1.5px solid transparent; border-radius: 100px;
+      background: var(--pill); color: var(--text);
+      font-size: .9rem; outline: none;
+      transition: border-color .2s, box-shadow .2s;
+    }
+    .search-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-glow);
+    }
+    .search-clear {
+      position: absolute; right: 10px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; color: var(--muted);
+      font-size: 1rem; display: none;
+    }
+    .search-input:not(:placeholder-shown) ~ .search-clear { display: block; }
+
+    /* sort button */
+    .sort-wrap { position: relative; }
+    .sort-btn {
+      display: flex; align-items: center; gap: 5px;
+      padding: 8px 13px; border-radius: 100px;
+      border: 1.5px solid var(--border);
+      background: var(--surface); color: var(--text);
+      font-size: .82rem; font-weight: 600; white-space: nowrap;
+    }
+    .sort-menu {
+      position: absolute; top: calc(100% + 6px); right: 0;
+      background: var(--surface); border: 1.5px solid var(--border);
+      border-radius: 12px; box-shadow: var(--shadow-lg);
+      min-width: 190px; overflow: hidden; z-index: 200;
+      display: none;
+    }
+    .sort-menu.open { display: block; }
+    .sort-item {
+      display: flex; align-items: center; gap: 10px;
+      padding: 11px 16px; background: none; border: none;
+      color: var(--text); font-size: .88rem; width: 100%; text-align: left;
+      transition: background .15s;
+    }
+    .sort-item:hover { background: var(--pill); }
+    .sort-item.active { color: var(--accent); font-weight: 700; }
+
+    /* ── TABS ────────────────────────────────────────────── */
+    .tabs {
+      display: flex; gap: 6px; padding: 10px 16px 4px;
+      overflow-x: auto; scrollbar-width: none;
+    }
+    .tabs::-webkit-scrollbar { display: none; }
+    .tab {
+      padding: 6px 16px; border-radius: 100px;
+      border: 1.5px solid var(--border);
+      background: transparent; color: var(--muted);
+      font-size: .83rem; font-weight: 600; white-space: nowrap;
+      transition: all .2s;
+    }
+    .tab.active {
+      background: var(--text); color: var(--bg);
+      border-color: var(--text);
+    }
+
+    /* ── CATEGORY CHIPS ──────────────────────────────────── */
+    .cats {
+      display: flex; gap: 6px; padding: 6px 16px 8px;
+      overflow-x: auto; scrollbar-width: none;
+    }
+    .cats::-webkit-scrollbar { display: none; }
+    .cat-chip {
+      display: flex; align-items: center; gap: 5px;
+      padding: 5px 13px; border-radius: 100px;
+      border: 1.5px solid var(--border);
+      background: var(--surface); color: var(--text);
+      font-size: .82rem; white-space: nowrap;
+      transition: all .2s;
+    }
+    .cat-chip.active {
+      background: var(--accent); color: #fff;
+      border-color: var(--accent);
+    }
+
+    /* ── QUICK CREATE ────────────────────────────────────── */
+    .qc-wrap {
+      margin: 10px 16px 14px;
+      background: var(--surface);
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      transition: box-shadow .2s;
+    }
+    .qc-wrap:focus-within { box-shadow: var(--shadow-lg); }
+
+    .qc-placeholder {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 13px 16px; color: var(--muted); cursor: text;
+    }
+    .qc-placeholder span { font-size: .95rem; }
+    .qc-ph-icons { display: flex; gap: 8px; }
+    .qc-ph-btn {
+      background: none; border: none; font-size: 1.1rem;
+      color: var(--muted); padding: 4px;
+      border-radius: 8px; transition: background .15s;
+    }
+    .qc-ph-btn:hover { background: var(--border); }
+
+    .qc-form { display: none; flex-direction: column; }
+    .qc-form.open { display: flex; }
+
+    .qc-title-input {
+      padding: 13px 16px 4px;
+      border: none; background: transparent; color: var(--text);
+      font-size: 1rem; font-weight: 700; outline: none; width: 100%;
+    }
+    .qc-title-input::placeholder { color: var(--muted); font-weight: 400; }
+
+    .qc-body-input {
+      padding: 4px 16px 12px;
+      border: none; background: transparent; color: var(--text);
+      font-size: .93rem; outline: none; width: 100%;
+      resize: none; min-height: 72px; line-height: 1.55;
+    }
+    .qc-body-input::placeholder { color: var(--muted); }
+
+    .qc-checklist { padding: 4px 16px 12px; display: flex; flex-direction: column; gap: 4px; }
+
+    .check-row {
+      display: flex; align-items: center; gap: 8px; padding: 3px 0;
+    }
+    .check-row input[type="checkbox"] {
+      width: 17px; height: 17px; accent-color: var(--accent); flex-shrink: 0; cursor: pointer;
+    }
+    .check-row .item-input {
+      flex: 1; border: none; border-bottom: 1px solid var(--border);
+      background: transparent; color: var(--text);
+      font-size: .93rem; outline: none; padding: 3px 0;
+    }
+    .check-row .item-del {
+      background: none; border: none; color: var(--muted);
+      font-size: .9rem; padding: 2px 5px; border-radius: 6px;
+      transition: background .15s;
+    }
+    .check-row .item-del:hover { background: var(--border); }
+
+    .add-item-row {
+      display: flex; align-items: center; gap: 8px;
+      color: var(--muted); font-size: .88rem; cursor: pointer;
+      padding: 5px 0;
+    }
+
+    .qc-toolbar {
+      display: flex; align-items: center; flex-wrap: wrap;
+      gap: 8px; padding: 8px 14px;
+      border-top: 1px solid var(--border);
+      background: var(--pill);
+    }
+    .color-row { display: flex; gap: 5px; flex-wrap: wrap; flex: 1; }
+    .c-dot {
+      width: 22px; height: 22px; border-radius: 50%;
+      border: 2.5px solid transparent; cursor: pointer;
+      transition: transform .15s, border-color .15s;
+      flex-shrink: 0;
+    }
+    .c-dot:hover { transform: scale(1.2); }
+    .c-dot.sel { border-color: var(--text); transform: scale(1.15); }
+
+    .cat-row { display: flex; gap: 3px; }
+    .ce-btn {
+      font-size: 1rem; padding: 2px 4px; border-radius: 6px;
+      border: 2px solid transparent; background: none; cursor: pointer;
+      transition: background .15s, border-color .15s;
+    }
+    .ce-btn:hover { background: var(--border); }
+    .ce-btn.sel { border-color: var(--accent); background: rgba(108,99,255,.15); }
+
+    .type-toggle {
+      padding: 6px 11px; border-radius: 9px;
+      border: 1.5px solid var(--border);
+      background: var(--surface); color: var(--text);
+      font-size: .8rem; font-weight: 600;
+    }
+    .save-btn {
+      padding: 7px 18px; border-radius: 10px;
+      border: none; background: var(--accent); color: #fff;
+      font-size: .88rem; font-weight: 700;
+      transition: opacity .2s;
+    }
+    .save-btn:hover { opacity: .88; }
+
+    /* ── NOTES GRID (masonry) ────────────────────────────── */
+    .section-label {
+      padding: 2px 16px 8px;
+      font-size: .72rem; font-weight: 800;
+      letter-spacing: .08em; text-transform: uppercase;
+      color: var(--muted);
+    }
+    .notes-grid {
+      padding: 0 16px;
+      columns: 2 220px; column-gap: 12px;
+    }
+    .notes-grid.wide { columns: 3 200px; }
+
+    .note-card {
+      break-inside: avoid; margin-bottom: 12px;
+      border-radius: 14px; padding: 14px;
+      border: 1.5px solid var(--border);
+      cursor: pointer; position: relative;
+      animation: pop .25s ease;
+      transition: transform .2s, box-shadow .2s;
+    }
+    .note-card:hover {
+      transform: translateY(-3px);
+      box-shadow: var(--shadow-lg);
+    }
+    @keyframes pop {
+      from { opacity: 0; transform: scale(.96) translateY(8px); }
+      to   { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    .note-pin-badge {
+      position: absolute; top: 10px; right: 12px;
+      font-size: .8rem; opacity: .7;
+    }
+
+    .note-title {
+      font-size: .97rem; font-weight: 700;
+      margin-bottom: 7px; word-break: break-word;
+    }
+    .note-content {
+      font-size: .84rem; line-height: 1.55;
+      opacity: .85; word-break: break-word;
+      white-space: pre-wrap;
+    }
+    .note-checklist { display: flex; flex-direction: column; gap: 4px; }
+    .note-ci {
+      display: flex; align-items: flex-start; gap: 7px;
+      font-size: .84rem; opacity: .85;
+    }
+    .note-ci input[type="checkbox"] {
+      margin-top: 2px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0;
+    }
+    .note-ci span.done { text-decoration: line-through; opacity: .5; }
+
+    .note-more { font-size: .75rem; opacity: .5; padding-top: 4px; }
+
+    .note-footer {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-top: 10px; opacity: 0; transition: opacity .2s;
+    }
+    .note-card:hover .note-footer { opacity: 1; }
+
+    .note-cat-badge { font-size: .9rem; }
+    .note-date { font-size: .72rem; opacity: .55; }
+    .note-acts { display: flex; gap: 3px; }
+    .note-act-btn {
+      background: rgba(0,0,0,.07); border: none;
+      border-radius: 7px; padding: 3px 7px;
+      font-size: .78rem; color: inherit;
+      transition: background .15s;
+    }
+    .note-act-btn:hover { background: rgba(0,0,0,.14); }
+
+    /* ── FAB ─────────────────────────────────────────────── */
+    .fab {
+      position: fixed; bottom: 22px; right: 20px;
+      width: 56px; height: 56px; border-radius: 50%;
+      background: var(--accent); color: #fff; border: none;
+      font-size: 1.6rem; display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 18px var(--accent-glow);
+      z-index: 80;
+      transition: transform .2s, box-shadow .2s;
+    }
+    .fab:hover {
+      transform: scale(1.1);
+      box-shadow: 0 6px 24px var(--accent-glow);
+    }
+
+    /* ── EMPTY STATE ─────────────────────────────────────── */
+    .empty {
+      text-align: center; padding: 64px 24px;
+      color: var(--muted); display: none;
+    }
+    .empty .big { font-size: 3.5rem; margin-bottom: 14px; }
+    .empty h3 { font-size: 1.1rem; font-weight: 700; margin-bottom: 8px; }
+    .empty p { font-size: .88rem; }
+
+    /* ── TOAST ───────────────────────────────────────────── */
+    .toast {
+      position: fixed; bottom: 88px; left: 50%;
+      transform: translateX(-50%) translateY(14px);
+      background: var(--toast-bg); color: #fff;
+      padding: 10px 22px; border-radius: 100px;
+      font-size: .88rem; font-weight: 600;
+      z-index: 500; opacity: 0; pointer-events: none;
+      white-space: nowrap;
+      transition: opacity .25s, transform .25s;
+    }
+    .toast.show {
+      opacity: 1; transform: translateX(-50%) translateY(0);
+    }
+
+    /* ── EDIT MODAL ──────────────────────────────────────── */
+    .overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.55);
+      z-index: 300; display: none;
+      align-items: center; justify-content: center;
+      padding: 20px;
+      animation: fadeOv .2s ease;
+    }
+    .overlay.open { display: flex; }
+    @keyframes fadeOv {
+      from { opacity: 0; } to { opacity: 1; }
+    }
+
+    .modal {
+      width: 100%; max-width: 560px;
+      max-height: 88vh; overflow-y: auto;
+      border-radius: var(--radius);
+      border: 1.5px solid var(--border);
+      box-shadow: var(--shadow-lg);
+      animation: slideModal .25s ease;
+    }
+    @keyframes slideModal {
+      from { transform: translateY(20px); opacity: 0; }
+      to   { transform: translateY(0); opacity: 1; }
+    }
+
+    .modal-head {
+      display: flex; align-items: center; gap: 8px;
+      padding: 16px 16px 8px;
+    }
+    .modal-title-input {
+      flex: 1; border: none; background: transparent;
+      color: inherit; font-size: 1.05rem; font-weight: 700;
+      outline: none;
+    }
+    .modal-title-input::placeholder { color: var(--muted); font-weight: 400; }
+    .modal-pin-btn {
+      background: none; border: none; font-size: 1.2rem;
+      opacity: .35; transition: opacity .2s; padding: 4px;
+    }
+    .modal-pin-btn.on { opacity: 1; }
+
+    .modal-body { padding: 4px 16px 12px; }
+    .modal-textarea {
+      width: 100%; min-height: 110px;
+      border: none; background: transparent; color: inherit;
+      font-size: .93rem; line-height: 1.6; outline: none; resize: none;
+    }
+    .modal-textarea::placeholder { color: var(--muted); }
+
+    .modal-checklist { display: flex; flex-direction: column; gap: 6px; }
+
+    .modal-toolbar {
+      display: flex; align-items: center; flex-wrap: wrap;
+      gap: 8px; padding: 10px 14px;
+      border-top: 1px solid var(--border);
+    }
+
+    .modal-footer {
+      display: flex; align-items: center; justify-content: flex-end;
+      gap: 8px; padding: 10px 16px;
+      border-top: 1px solid var(--border);
+    }
+    .modal-del-btn {
+      background: rgba(239,68,68,.12); color: #ef4444;
+      border: none; border-radius: 9px;
+      padding: 7px 14px; font-size: .86rem; font-weight: 600;
+    }
+    .modal-arch-btn {
+      background: var(--pill); color: var(--text);
+      border: none; border-radius: 9px;
+      padding: 7px 14px; font-size: .86rem;
+    }
+    .modal-save-btn {
+      background: var(--accent); color: #fff;
+      border: none; border-radius: 9px;
+      padding: 7px 20px; font-size: .88rem; font-weight: 700;
+    }
+    .modal-save-btn:hover { opacity: .88; }
+
+    /* ── MISC ────────────────────────────────────────────── */
+    .pinned-section { display: none; }
+    .bottom-space { height: 88px; }
+
+    @media (max-width: 440px) {
+      .header { padding: 8px 12px; }
+      .notes-grid { padding: 0 12px; columns: 1; }
+      .qc-wrap, .section-label { margin-left: 0; margin-right: 0; }
+      .tabs, .cats { padding-left: 12px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="logo">⚡ QuickNote</div>
+  <div class="search-wrap">
+    <span class="search-ico">🔍</span>
+    <input class="search-input" type="search" id="searchInput" placeholder="Buscar notas...">
+    <button class="search-clear" id="searchClear">✕</button>
+  </div>
+  <div class="sort-wrap">
+    <button class="sort-btn" id="sortBtn">↕ <span id="sortLabel">Recientes</span></button>
+    <div class="sort-menu" id="sortMenu">
+      <button class="sort-item active" data-sort="updatedAt">🕒 Más recientes</button>
+      <button class="sort-item" data-sort="createdAt">📅 Fecha creación</button>
+      <button class="sort-item" data-sort="color">🎨 Por color</button>
+      <button class="sort-item" data-sort="pinned">📌 Fijadas primero</button>
+    </div>
+  </div>
+</header>
+
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab active" data-tab="all">✨ Todas</button>
+  <button class="tab" data-tab="today">📅 Hoy</button>
+  <button class="tab" data-tab="archived">📦 Archivadas</button>
+</div>
+
+<!-- CATEGORY CHIPS -->
+<div class="cats" id="catsBar"></div>
+
+<!-- QUICK CREATE -->
+<div class="qc-wrap" id="qcWrap">
+  <div class="qc-placeholder" id="qcPlaceholder">
+    <span>Toca para crear una nota...</span>
+    <div class="qc-ph-icons">
+      <button class="qc-ph-btn" data-start="checklist" title="Nueva lista">☑️</button>
+    </div>
+  </div>
+  <div class="qc-form" id="qcForm">
+    <input class="qc-title-input" type="text" placeholder="Título (opcional)" id="qcTitle">
+    <div id="qcContent"></div>
+    <div class="qc-toolbar">
+      <div class="color-row" id="qcColors"></div>
+      <div class="cat-row" id="qcCats"></div>
+      <button class="type-toggle" id="qcTypeToggle">☑️ Lista</button>
+      <button class="save-btn" id="qcSaveBtn">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- PINNED SECTION -->
+<div class="pinned-section" id="pinnedSection">
+  <div class="section-label">📌 Fijadas</div>
+  <div class="notes-grid" id="pinnedGrid"></div>
+  <div class="section-label" id="othersLabel">Otras notas</div>
+</div>
+
+<!-- MAIN GRID -->
+<div class="notes-grid" id="mainGrid"></div>
+
+<!-- EMPTY STATE -->
+<div class="empty" id="emptyState">
+  <div class="big">📝</div>
+  <h3>Sin notas todavía</h3>
+  <p>Toca en el campo de arriba o el botón + para crear tu primera nota</p>
+</div>
+
+<div class="bottom-space"></div>
+
+<!-- FAB -->
+<button class="fab" id="fabBtn" title="Nueva nota">+</button>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- EDIT MODAL -->
+<div class="overlay" id="overlay">
+  <div class="modal" id="modal">
+    <div class="modal-head">
+      <input class="modal-title-input" type="text" placeholder="Título" id="modalTitle">
+      <button class="modal-pin-btn" id="modalPinBtn" title="Fijar nota">📌</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-toolbar">
+      <div class="color-row" id="modalColors"></div>
+      <div class="cat-row" id="modalCats"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-del-btn" id="modalDelBtn">🗑 Eliminar</button>
+      <button class="modal-arch-btn" id="modalArchBtn">📦 Archivar</button>
+      <button class="modal-save-btn" id="modalSaveBtn">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════════════════════════
+const COLORS = [
+  { id: 'default', dot: '#e5e7eb', dotDark: '#374151' },
+  { id: 'yellow',  dot: '#fff740' },
+  { id: 'pink',    dot: '#ffb3d9' },
+  { id: 'red',     dot: '#ffadad' },
+  { id: 'green',   dot: '#b5ead7' },
+  { id: 'blue',    dot: '#aecbfa' },
+  { id: 'purple',  dot: '#d0bfff' },
+  { id: 'orange',  dot: '#ffd6a5' },
+];
+
+const CATS = ['📝','💡','🛒','📚','💼','🏠','❤️','🎯'];
+
+// ═══════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════
+let notes = [];
+let tab    = 'all';
+let cat    = 'all';
+let sort   = 'updatedAt';
+let editId = null;
+
+// Quick-create state
+let qcType  = 'text';
+let qcColor = 'default';
+let qcCat   = '📝';
+let qcItems = [{text:'', checked:false}];
+
+// Modal state
+let mType    = 'text';
+let mColor   = 'default';
+let mCat     = '📝';
+let mPinned  = false;
+let mItems   = [];
+
+// ═══════════════════════════════════════════════════════════
+// STORAGE
+// ═══════════════════════════════════════════════════════════
+function load() {
+  try { notes = JSON.parse(localStorage.getItem('qn_v2') || '[]'); }
+  catch { notes = []; }
+}
+function save() {
+  try { localStorage.setItem('qn_v2', JSON.stringify(notes)); }
+  catch {}
+}
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2); }
+
+// ═══════════════════════════════════════════════════════════
+// FILTER & SORT
+// ═══════════════════════════════════════════════════════════
+function filtered() {
+  const q = document.getElementById('searchInput').value.toLowerCase().trim();
+  const today = new Date().toDateString();
+
+  let out = notes.filter(n => {
+    if (tab === 'archived') return n.archived;
+    if (n.archived) return false;
+    if (tab === 'today') {
+      return new Date(n.createdAt).toDateString() === today
+          || new Date(n.updatedAt).toDateString() === today;
+    }
+    return true;
+  });
+
+  if (q) out = out.filter(n => {
+    const txt = [n.title, n.content, ...(n.items||[]).map(i=>i.text)].join(' ').toLowerCase();
+    return txt.includes(q);
+  });
+
+  if (cat !== 'all') out = out.filter(n => n.cat === cat);
+
+  out.sort((a, b) => {
+    if (sort === 'pinned')    return (b.pinned ? 1 : 0) - (a.pinned ? 1 : 0) || b.updatedAt - a.updatedAt;
+    if (sort === 'color')     return (a.color||'').localeCompare(b.color||'') || b.updatedAt - a.updatedAt;
+    if (sort === 'createdAt') return b.createdAt - a.createdAt;
+    return b.updatedAt - a.updatedAt;
+  });
+
+  return out;
+}
+
+// ═══════════════════════════════════════════════════════════
+// RENDER HELPERS
+// ═══════════════════════════════════════════════════════════
+function isDark() { return matchMedia('(prefers-color-scheme: dark)').matches; }
+
+function buildColorDots(container, current, onChange) {
+  container.innerHTML = '';
+  COLORS.forEach(c => {
+    const d = document.createElement('div');
+    d.className = 'c-dot' + (c.id === current ? ' sel' : '');
+    d.style.background = isDark() ? (c.dotDark || c.dot) : c.dot;
+    if (c.id === 'default') {
+      d.style.border = '2px solid var(--border)';
+    }
+    d.title = c.id;
+    d.onclick = () => { onChange(c.id); };
+    container.appendChild(d);
+  });
+}
+
+function buildCatEmojis(container, current, onChange) {
+  container.innerHTML = '';
+  CATS.forEach(e => {
+    const b = document.createElement('button');
+    b.className = 'ce-btn' + (e === current ? ' sel' : '');
+    b.textContent = e;
+    b.onclick = () => onChange(e);
+    container.appendChild(b);
+  });
+}
+
+function buildChecklist(container, items, onDelete) {
+  container.innerHTML = '';
+  items.forEach((item, i) => {
+    const row = document.createElement('div');
+    row.className = 'check-row';
+
+    const cb = document.createElement('input');
+    cb.type = 'checkbox'; cb.checked = item.checked;
+    cb.onchange = () => { items[i].checked = cb.checked; };
+
+    const inp = document.createElement('input');
+    inp.type = 'text'; inp.className = 'item-input';
+    inp.placeholder = 'Elemento...'; inp.value = item.text;
+    inp.oninput = () => { items[i].text = inp.value; };
+    inp.onkeydown = e => {
+      if (e.key === 'Enter') {
+        items.splice(i+1, 0, {text:'', checked:false});
+        buildChecklist(container, items, onDelete);
+        setTimeout(() => container.querySelectorAll('.item-input')[i+1]?.focus(), 0);
+      }
+      if (e.key === 'Backspace' && inp.value === '' && items.length > 1) {
+        items.splice(i, 1);
+        buildChecklist(container, items, onDelete);
+        setTimeout(() => container.querySelectorAll('.item-input')[Math.max(0,i-1)]?.focus(), 0);
+      }
+    };
+
+    const del = document.createElement('button');
+    del.className = 'item-del'; del.textContent = '×';
+    del.onclick = () => {
+      if (items.length > 1) { items.splice(i, 1); buildChecklist(container, items, onDelete); }
+    };
+
+    row.append(cb, inp, del);
+    container.appendChild(row);
+  });
+
+  const addRow = document.createElement('div');
+  addRow.className = 'add-item-row';
+  addRow.innerHTML = '<span>➕</span><span>Añadir elemento</span>';
+  addRow.onclick = () => {
+    items.push({text:'', checked:false});
+    buildChecklist(container, items, onDelete);
+    setTimeout(() => {
+      const ins = container.querySelectorAll('.item-input');
+      ins[ins.length-1]?.focus();
+    }, 0);
+  };
+  container.appendChild(addRow);
+}
+
+function fmtDate(ts) {
+  const d = new Date(ts);
+  const now = new Date();
+  if (d.toDateString() === now.toDateString()) {
+    return d.toLocaleTimeString('es', {hour:'2-digit', minute:'2-digit'});
+  }
+  return d.toLocaleDateString('es', {day:'numeric', month:'short'});
+}
+
+// ═══════════════════════════════════════════════════════════
+// RENDER NOTES
+// ═══════════════════════════════════════════════════════════
+function buildCard(note) {
+  const card = document.createElement('div');
+  card.className = `note-card nc-${note.color || 'default'}`;
+
+  if (note.pinned) {
+    const pin = document.createElement('span');
+    pin.className = 'note-pin-badge'; pin.textContent = '📌';
+    card.appendChild(pin);
+  }
+
+  if (note.title) {
+    const h = document.createElement('div');
+    h.className = 'note-title';
+    h.textContent = note.title;
+    card.appendChild(h);
+  }
+
+  if (note.type === 'checklist' && note.items?.length) {
+    const list = document.createElement('div');
+    list.className = 'note-checklist';
+    const MAX = 6;
+    note.items.slice(0, MAX).forEach((item, i) => {
+      const row = document.createElement('div'); row.className = 'note-ci';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox'; cb.checked = item.checked;
+      cb.onclick = e => {
+        e.stopPropagation();
+        note.items[i].checked = !note.items[i].checked;
+        note.updatedAt = Date.now(); save(); renderAll();
+      };
+      const sp = document.createElement('span');
+      sp.textContent = item.text;
+      if (item.checked) sp.classList.add('done');
+      row.append(cb, sp); list.appendChild(row);
+    });
+    if (note.items.length > MAX) {
+      const more = document.createElement('div');
+      more.className = 'note-more';
+      more.textContent = `+${note.items.length - MAX} más`;
+      list.appendChild(more);
+    }
+    card.appendChild(list);
+  } else if (note.content) {
+    const body = document.createElement('div');
+    body.className = 'note-content';
+    const lines = note.content.split('\n');
+    body.textContent = lines.slice(0, 7).join('\n') + (lines.length > 7 ? '\n…' : '');
+    card.appendChild(body);
+  }
+
+  // footer
+  const footer = document.createElement('div');
+  footer.className = 'note-footer';
+
+  const left = document.createElement('div');
+  left.style.display = 'flex'; left.style.alignItems = 'center'; left.style.gap = '8px';
+  const catBadge = document.createElement('span');
+  catBadge.className = 'note-cat-badge'; catBadge.textContent = note.cat || '📝';
+  const dateSpan = document.createElement('span');
+  dateSpan.className = 'note-date'; dateSpan.textContent = fmtDate(note.updatedAt);
+  left.append(catBadge, dateSpan);
+
+  const acts = document.createElement('div'); acts.className = 'note-acts';
+
+  const pinBtn = document.createElement('button');
+  pinBtn.className = 'note-act-btn';
+  pinBtn.title = note.pinned ? 'Desfijar' : 'Fijar';
+  pinBtn.textContent = note.pinned ? '📍' : '📌';
+  pinBtn.onclick = e => {
+    e.stopPropagation();
+    note.pinned = !note.pinned; note.updatedAt = Date.now();
+    save(); renderAll();
+    toast(note.pinned ? 'Nota fijada 📌' : 'Nota desfijada');
+  };
+
+  const archBtn = document.createElement('button');
+  archBtn.className = 'note-act-btn';
+  archBtn.title = note.archived ? 'Restaurar' : 'Archivar';
+  archBtn.textContent = note.archived ? '📤' : '📦';
+  archBtn.onclick = e => {
+    e.stopPropagation();
+    note.archived = !note.archived; note.updatedAt = Date.now();
+    save(); renderAll();
+    toast(note.archived ? 'Nota archivada' : 'Nota restaurada');
+  };
+
+  acts.append(pinBtn, archBtn);
+  footer.append(left, acts);
+  card.appendChild(footer);
+
+  card.onclick = () => openModal(note.id);
+  return card;
+}
+
+function renderAll() {
+  // categories bar
+  const bar = document.getElementById('catsBar');
+  bar.innerHTML = '';
+  const allChip = document.createElement('button');
+  allChip.className = 'cat-chip' + (cat === 'all' ? ' active' : '');
+  allChip.textContent = '✨ Todas';
+  allChip.onclick = () => { cat = 'all'; renderAll(); };
+  bar.appendChild(allChip);
+  CATS.forEach(e => {
+    const b = document.createElement('button');
+    b.className = 'cat-chip' + (cat === e ? ' active' : '');
+    b.textContent = e;
+    b.onclick = () => { cat = cat === e ? 'all' : e; renderAll(); };
+    bar.appendChild(b);
+  });
+
+  // split pinned / others
+  const all = filtered();
+  const pinned = all.filter(n => n.pinned && sort !== 'pinned');
+  const others = sort === 'pinned' ? all : all.filter(n => !n.pinned);
+
+  const pinnedSection = document.getElementById('pinnedSection');
+  const pinnedGrid    = document.getElementById('pinnedGrid');
+  const mainGrid      = document.getElementById('mainGrid');
+  const emptyState    = document.getElementById('emptyState');
+
+  pinnedGrid.innerHTML = ''; mainGrid.innerHTML = '';
+
+  if (all.length === 0) {
+    emptyState.style.display = 'block';
+    pinnedSection.style.display = 'none';
+    return;
+  }
+  emptyState.style.display = 'none';
+
+  if (pinned.length > 0) {
+    pinnedSection.style.display = 'block';
+    document.getElementById('othersLabel').style.display = others.length ? 'block' : 'none';
+    pinned.forEach(n => pinnedGrid.appendChild(buildCard(n)));
+  } else {
+    pinnedSection.style.display = 'none';
+  }
+
+  others.forEach(n => mainGrid.appendChild(buildCard(n)));
+}
+
+// ═══════════════════════════════════════════════════════════
+// QUICK CREATE
+// ═══════════════════════════════════════════════════════════
+function initQc() {
+  buildColorDots(document.getElementById('qcColors'), qcColor, id => {
+    qcColor = id; refreshQcColorDots();
+    document.getElementById('qcWrap').className = `qc-wrap nc-${qcColor}`;
+  });
+  buildCatEmojis(document.getElementById('qcCats'), qcCat, e => {
+    qcCat = e; buildCatEmojis(document.getElementById('qcCats'), qcCat, arguments.callee);
+  });
+  renderQcContent();
+
+  document.getElementById('qcPlaceholder').onclick = e => {
+    const start = e.target.closest('[data-start]')?.dataset.start;
+    if (start) qcType = start;
+    openQc();
+  };
+  document.getElementById('qcTypeToggle').onclick = () => {
+    qcType = qcType === 'text' ? 'checklist' : 'text';
+    document.getElementById('qcTypeToggle').textContent = qcType === 'checklist' ? '📝 Texto' : '☑️ Lista';
+    qcItems = [{text:'', checked:false}];
+    renderQcContent();
+  };
+  document.getElementById('qcSaveBtn').onclick = saveQcNote;
+
+  document.addEventListener('click', e => {
+    if (!document.getElementById('qcWrap').contains(e.target)) {
+      saveQcNote(true);
+    }
+  });
+}
+
+function refreshQcColorDots() {
+  buildColorDots(document.getElementById('qcColors'), qcColor, id => {
+    qcColor = id; refreshQcColorDots();
+    document.getElementById('qcWrap').className = `qc-wrap nc-${qcColor}`;
+  });
+}
+
+function renderQcContent() {
+  const cnt = document.getElementById('qcContent');
+  cnt.innerHTML = '';
+  if (qcType === 'text') {
+    const ta = document.createElement('textarea');
+    ta.className = 'qc-body-input'; ta.id = 'qcBody';
+    ta.placeholder = 'Escribe algo...'; ta.rows = 3;
+    cnt.appendChild(ta);
+  } else {
+    const div = document.createElement('div');
+    div.className = 'qc-checklist'; div.id = 'qcChecklist';
+    buildChecklist(div, qcItems);
+    cnt.appendChild(div);
+  }
+}
+
+function openQc() {
+  document.getElementById('qcPlaceholder').style.display = 'none';
+  document.getElementById('qcForm').classList.add('open');
+  document.getElementById('qcTypeToggle').textContent = qcType === 'checklist' ? '📝 Texto' : '☑️ Lista';
+  setTimeout(() => {
+    if (qcType === 'text') document.getElementById('qcBody')?.focus();
+    else document.querySelector('#qcChecklist .item-input')?.focus();
+  }, 50);
+}
+
+function closeQc() {
+  document.getElementById('qcPlaceholder').style.display = '';
+  document.getElementById('qcForm').classList.remove('open');
+  document.getElementById('qcTitle').value = '';
+  qcType = 'text'; qcColor = 'default'; qcCat = '📝';
+  qcItems = [{text:'', checked:false}];
+  document.getElementById('qcWrap').className = 'qc-wrap';
+  refreshQcColorDots();
+  buildCatEmojis(document.getElementById('qcCats'), qcCat, e => {
+    qcCat = e; buildCatEmojis(document.getElementById('qcCats'), qcCat, arguments.callee);
+  });
+  renderQcContent();
+}
+
+function saveQcNote(auto = false) {
+  if (!document.getElementById('qcForm').classList.contains('open')) return;
+  const title = document.getElementById('qcTitle').value.trim();
+  let content = '', items = [];
+
+  if (qcType === 'text') {
+    content = document.getElementById('qcBody')?.value?.trim() || '';
+  } else {
+    items = qcItems.filter(i => i.text.trim());
+  }
+
+  if (!title && !content && !items.length) {
+    if (!auto) toast('Escribe algo primero');
+    closeQc(); return;
+  }
+
+  notes.unshift({
+    id: uid(), type: qcType, title, content,
+    items: items.map(i => ({...i})),
+    color: qcColor, cat: qcCat,
+    pinned: false, archived: false,
+    createdAt: Date.now(), updatedAt: Date.now(),
+  });
+  save(); renderAll(); closeQc();
+  toast('Nota creada ✓');
+}
+
+// ═══════════════════════════════════════════════════════════
+// EDIT MODAL
+// ═══════════════════════════════════════════════════════════
+function initModal() {
+  document.getElementById('overlay').onclick = e => {
+    if (e.target === document.getElementById('overlay')) closeModal(true);
+  };
+  document.getElementById('modalPinBtn').onclick = () => {
+    mPinned = !mPinned;
+    document.getElementById('modalPinBtn').classList.toggle('on', mPinned);
+  };
+  document.getElementById('modalSaveBtn').onclick = () => closeModal(true);
+  document.getElementById('modalDelBtn').onclick   = deleteNote;
+  document.getElementById('modalArchBtn').onclick  = archiveNote;
+}
+
+function openModal(id) {
+  const note = notes.find(n => n.id === id);
+  if (!note) return;
+  editId = id; mType = note.type; mColor = note.color || 'default';
+  mCat = note.cat || '📝'; mPinned = note.pinned;
+  mItems = (note.items || []).map(i => ({...i}));
+
+  document.getElementById('modalTitle').value = note.title || '';
+  document.getElementById('modalPinBtn').classList.toggle('on', mPinned);
+  document.getElementById('modalArchBtn').textContent = note.archived ? '📤 Restaurar' : '📦 Archivar';
+
+  const modal = document.getElementById('modal');
+  modal.className = `modal nc-${mColor}`;
+  modal.style.color = '';
+
+  renderModalBody();
+  buildColorDots(document.getElementById('modalColors'), mColor, id => {
+    mColor = id;
+    modal.className = `modal nc-${mColor}`;
+    buildColorDots(document.getElementById('modalColors'), mColor, arguments.callee);
+  });
+  buildCatEmojis(document.getElementById('modalCats'), mCat, e => {
+    mCat = e;
+    buildCatEmojis(document.getElementById('modalCats'), mCat, arguments.callee);
+  });
+
+  document.getElementById('overlay').classList.add('open');
+}
+
+function renderModalBody() {
+  const body = document.getElementById('modalBody');
+  body.innerHTML = '';
+  const note = notes.find(n => n.id === editId);
+  if (!note) return;
+
+  if (mType === 'text') {
+    const ta = document.createElement('textarea');
+    ta.className = 'modal-textarea'; ta.id = 'modalTextarea';
+    ta.placeholder = 'Escribe algo...';
+    ta.value = note.content || '';
+    body.appendChild(ta);
+    setTimeout(() => ta.focus(), 50);
+  } else {
+    const div = document.createElement('div');
+    div.className = 'modal-checklist'; div.id = 'modalChecklist';
+    if (!mItems.length) mItems = [{text:'', checked:false}];
+    buildChecklist(div, mItems);
+    body.appendChild(div);
+  }
+}
+
+function closeModal(save) {
+  const note = notes.find(n => n.id === editId);
+  if (save && note) {
+    note.title  = document.getElementById('modalTitle').value.trim();
+    note.color  = mColor;
+    note.cat    = mCat;
+    note.pinned = mPinned;
+    if (mType === 'text') {
+      note.content = document.getElementById('modalTextarea')?.value?.trim() || '';
+    } else {
+      note.items = mItems.filter(i => i.text.trim());
+    }
+    note.updatedAt = Date.now();
+    save(); renderAll();
+  }
+  document.getElementById('overlay').classList.remove('open');
+  editId = null;
+}
+
+function deleteNote() {
+  if (!editId) return;
+  notes = notes.filter(n => n.id !== editId);
+  save(); renderAll();
+  document.getElementById('overlay').classList.remove('open');
+  editId = null;
+  toast('Nota eliminada 🗑');
+}
+
+function archiveNote() {
+  const note = notes.find(n => n.id === editId);
+  if (!note) return;
+  note.archived = !note.archived; note.updatedAt = Date.now();
+  const archived = note.archived;
+  closeModal(true);
+  toast(archived ? 'Nota archivada 📦' : 'Nota restaurada 📤');
+}
+
+// ═══════════════════════════════════════════════════════════
+// TOAST
+// ═══════════════════════════════════════════════════════════
+let toastT;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(toastT);
+  toastT = setTimeout(() => el.classList.remove('show'), 2600);
+}
+
+// ═══════════════════════════════════════════════════════════
+// CONTROLS
+// ═══════════════════════════════════════════════════════════
+function initControls() {
+  // search
+  const si = document.getElementById('searchInput');
+  si.addEventListener('input', () => renderAll());
+  document.getElementById('searchClear').onclick = () => {
+    si.value = ''; renderAll(); si.focus();
+  };
+
+  // tabs
+  document.querySelectorAll('.tab').forEach(t => {
+    t.onclick = () => {
+      tab = t.dataset.tab;
+      document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      renderAll();
+    };
+  });
+
+  // sort
+  const sortBtn  = document.getElementById('sortBtn');
+  const sortMenu = document.getElementById('sortMenu');
+  const sortLabels = { updatedAt:'Recientes', createdAt:'Creación', color:'Color', pinned:'Fijadas' };
+
+  sortBtn.onclick = e => {
+    e.stopPropagation();
+    sortMenu.classList.toggle('open');
+  };
+  document.addEventListener('click', () => sortMenu.classList.remove('open'));
+
+  sortMenu.querySelectorAll('.sort-item').forEach(it => {
+    it.onclick = () => {
+      sort = it.dataset.sort;
+      document.getElementById('sortLabel').textContent = sortLabels[sort];
+      sortMenu.querySelectorAll('.sort-item').forEach(x => x.classList.remove('active'));
+      it.classList.add('active');
+      sortMenu.classList.remove('open');
+      renderAll();
+    };
+  });
+
+  // FAB
+  document.getElementById('fabBtn').onclick = () => {
+    window.scrollTo({top: 0, behavior: 'smooth'});
+    setTimeout(openQc, 200);
+  };
+}
+
+// ═══════════════════════════════════════════════════════════
+// PWA
+// ═══════════════════════════════════════════════════════════
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () =>
+    navigator.serviceWorker.register('service-worker.js').catch(() => {})
+  );
+}
+
+// ═══════════════════════════════════════════════════════════
+// BOOT
+// ═══════════════════════════════════════════════════════════
+load();
+initQc();
+initModal();
+initControls();
+renderAll();
+
+// seed demo notes if first time
+if (notes.length === 0) {
+  const demo = [
+    { id:uid(), type:'text', title:'Bienvenido a QuickNote ⚡', content:'Toca cualquier nota para editarla.\nDesliza para ver las acciones.\n\nCreado con amor, sin anuncios.', color:'purple', cat:'💡', pinned:true, archived:false, createdAt:Date.now()-3e5, updatedAt:Date.now()-3e5 },
+    { id:uid(), type:'checklist', title:'Lista de la compra', content:'', items:[{text:'Leche',checked:true},{text:'Pan',checked:false},{text:'Aguacates 🥑',checked:false},{text:'Café',checked:false}], color:'green', cat:'🛒', pinned:false, archived:false, createdAt:Date.now()-2e5, updatedAt:Date.now()-2e5 },
+    { id:uid(), type:'text', title:'Idea de proyecto', content:'Construir una versión PWA de notas más visual que Keep.\n\n✓ Hecho! 🎉', color:'yellow', cat:'💡', pinned:false, archived:false, createdAt:Date.now()-1e5, updatedAt:Date.now()-1e5 },
+    { id:uid(), type:'text', title:'Reunión del lunes', content:'• Revisar métricas Q2\n• Planificar sprint 24\n• Demo al cliente a las 16:00', color:'blue', cat:'💼', pinned:false, archived:false, createdAt:Date.now()-5e4, updatedAt:Date.now()-5e4 },
+    { id:uid(), type:'text', title:'', content:'Llamar a mamá 📞', color:'pink', cat:'❤️', pinned:false, archived:false, createdAt:Date.now()-2e4, updatedAt:Date.now()-2e4 },
+  ];
+  notes = demo;
+  save();
+  renderAll();
+}
+</script>
+</body>
+</html>
