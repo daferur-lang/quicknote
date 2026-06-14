@@ -1188,7 +1188,7 @@ function initVoice() {
   if (!SR) return;
 
   const micBtn = document.getElementById('voiceMicBtn');
-  micBtn.style.display = '';
+  micBtn.style.display = 'inline-flex';
 
   recognition = new SR();
   recognition.lang = 'es-ES';
