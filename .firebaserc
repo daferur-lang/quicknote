@@ -1,0 +1,14 @@
+{
+  "projects": {
+    "default": "daferur-apps"
+  },
+  "targets": {
+    "daferur-apps": {
+      "hosting": {
+        "quicknote": [
+          "quicknote-pwa"
+        ]
+      }
+    }
+  }
+}

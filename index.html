@@ -1169,12 +1169,18 @@ function saveQcNote(auto = false) {
 
   if (!title && !content && !items.length) { if (!auto) toast('Escribe algo primero'); closeQc(); return; }
 
+  let ts = Date.now();
+  if (calSelectedDay) {
+    const [y, m, d] = calSelectedDay.split('-').map(Number);
+    ts = new Date(y, m - 1, d, 12, 0, 0).getTime();
+  }
+
   notes.unshift({
     id: uid(), type: qcType, title, content,
     items: items.map(i => ({...i})),
     color: qcColor, cat: qcCat,
     pinned: false, archived: false,
-    createdAt: Date.now(), updatedAt: Date.now(),
+    createdAt: ts, updatedAt: ts,
   });
   save(); renderAll(); closeQc();
   toast('Nota creada ✓');
@@ -1215,7 +1221,11 @@ function initVoice() {
   };
 
   recognition.onend = () => {
-    if (voiceActive) { try { recognition.start(); } catch {} }
+    if (voiceActive) {
+      const ta = document.getElementById('qcBody');
+      if (ta && ta.value.trim()) voiceAccumulated = ta.value.trim() + ' ';
+      setTimeout(() => { try { recognition.start(); } catch {} }, 150);
+    }
   };
 
   micBtn.onclick = e => {
